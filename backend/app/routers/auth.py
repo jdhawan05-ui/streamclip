@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-import uuid
+import uuid, logging, traceback
 
 from app.models.database import User, get_db
 from app.services.auth_service import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+log = logging.getLogger(__name__)
 
 class RegisterBody(BaseModel):
     email: str
@@ -46,15 +47,19 @@ async def register(body: RegisterBody, db: AsyncSession = Depends(get_db)):
     if existing_un.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username already taken")
 
-    user = User(
-        id=str(uuid.uuid4()),
-        email=body.email.lower(),
-        username=body.username.lower(),
-        hashed_pw=hash_password(body.password),
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
+    try:
+        user = User(
+            id=str(uuid.uuid4()),
+            email=body.email.lower(),
+            username=body.username.lower(),
+            hashed_pw=hash_password(body.password),
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    except Exception as e:
+        log.error(f"Register DB error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
     token = create_access_token(user.id, user.email)
     return TokenOut(access_token=token, user_id=user.id, username=user.username, email=user.email)
