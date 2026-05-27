@@ -6,8 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function timeAgo(dateStr: string): string {
-  const d = new Date(dateStr);
+  // Ensure UTC parsing — backend sends naive UTC without Z, browsers treat it as local time otherwise
+  const utc = dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+  const d = new Date(utc);
   const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 5) return "just now";
   if (s < 60) return `${s}s ago`;
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
