@@ -15,7 +15,13 @@ async function proxy(req: NextRequest, params: Promise<{ path: string[] }>) {
 
   const body = req.method !== 'GET' ? await req.text() : undefined;
 
-  const res = await fetch(target.toString(), { method: req.method, headers, body });
+  let res: Response;
+  try {
+    res = await fetch(target.toString(), { method: req.method, headers, body });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ detail: `Backend unreachable (${BACKEND}): ${msg}` }, { status: 502 });
+  }
   const text = await res.text();
   return new NextResponse(text, {
     status: res.status,
