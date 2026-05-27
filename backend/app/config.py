@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "sqlite+aiosqlite:///./streamclip.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:////app/data/streamclip.db"
 
     # Auth
     SECRET_KEY: str = "change-me-in-production-use-a-long-random-string"
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     S3_BUCKET: Optional[str] = None
 
     FRONTEND_URL: str = "http://localhost:3000"
-    CLIPS_DIR: str = "./clips"
+    CLIPS_DIR: str = "/app/data/clips"
 
     # Hype detection thresholds
     CHAT_VELOCITY_MULTIPLIER: float = 3.0   # spike = N×  baseline

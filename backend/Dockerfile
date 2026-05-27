@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy app
 COPY . .
 
-# Create clips directory
-RUN mkdir -p /app/clips
+# Create persistent data directory (DB + clips live here, mounted as Railway Volume)
+RUN mkdir -p /app/data/clips
 
 EXPOSE 8000
 
