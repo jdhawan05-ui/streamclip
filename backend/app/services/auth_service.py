@@ -1,4 +1,4 @@
-"""JWT auth + password hashing."""
+"""JWT auth + password hashing. v2 — SHA-256 prehash for bcrypt safety."""
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
