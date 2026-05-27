@@ -43,6 +43,7 @@ class StreamSession:
         self.recorder: StreamRecorder = None
         self.chat_monitor = None  # TwitchMonitor or YouTubeMonitor
         self._hype_in_progress = False
+        self._is_live = False  # track live state to detect transitions
 
 class StreamManager:
     def __init__(self):
@@ -108,11 +109,20 @@ class StreamManager:
 
         try:
             await session.chat_monitor.start()
-            await session.recorder.start()
-            log.info(f"[{stream_id}] All monitors running")
         except Exception as e:
-            log.error(f"[{stream_id}] Failed to start: {e}")
+            log.error(f"[{stream_id}] Failed to start chat monitor: {e}")
             await self.stop_stream(stream_id)
+            return
+
+        # Try to start the recorder — but don't kill the whole monitor if the
+        # stream is currently offline. The recorder will be started automatically
+        # by _handle_status_change when the stream goes live.
+        try:
+            await session.recorder.start()
+            session._is_live = True
+            log.info(f"[{stream_id}] All monitors running (stream is live)")
+        except Exception as e:
+            log.info(f"[{stream_id}] Chat monitor running; recorder will start when stream goes live ({e})")
 
     async def stop_stream(self, stream_id: str):
         session = self._sessions.pop(stream_id, None)
@@ -262,6 +272,9 @@ class StreamManager:
     # ── Status changes ────────────────────────────────────────────────────────
 
     async def _handle_status_change(self, session: StreamSession, is_live: bool, info: dict):
+        was_live = session._is_live
+        session._is_live = is_live
+
         async with AsyncSessionLocal() as db:
             await db.execute(
                 update(MonitoredStream).where(MonitoredStream.id == session.stream_id).values(
@@ -272,6 +285,18 @@ class StreamManager:
                 )
             )
             await db.commit()
+
+        # Start recorder when stream goes live; stop it when it goes offline.
+        if is_live and not was_live:
+            log.info(f"[{session.stream_id}] Stream went live — starting recorder")
+            try:
+                await session.recorder.start()
+            except Exception as e:
+                log.error(f"[{session.stream_id}] Recorder failed to start on live: {e}")
+        elif not is_live and was_live:
+            log.info(f"[{session.stream_id}] Stream went offline — stopping recorder")
+            if session.recorder:
+                await session.recorder.stop()
 
         await ws_manager.send(session.user_id, "stream_status", {
             "stream_id": session.stream_id,

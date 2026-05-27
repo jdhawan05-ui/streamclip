@@ -6,9 +6,11 @@ RUN npm ci
 
 COPY . .
 
-# Build — NEXT_PUBLIC_API_URL injected at build time via Railway env var
+# Build-time env vars injected via Railway
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 
 RUN npm run build
 

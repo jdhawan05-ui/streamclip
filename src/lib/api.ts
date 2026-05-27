@@ -123,7 +123,15 @@ export const api = {
 export function createWebSocket(onMessage: (e: WSEvent) => void): WebSocket | null {
   const token = getToken();
   if (!token || typeof window === "undefined") return null;
-  const wsBase = API.replace("http://", "ws://").replace("https://", "wss://");
+
+  // NEXT_PUBLIC_WS_URL must be the backend's public wss:// URL (set in Railway frontend vars).
+  // API is "" in production (we use server-side proxy for HTTP), so we can't derive WS URL from it.
+  const wsBase = process.env.NEXT_PUBLIC_WS_URL;
+  if (!wsBase) {
+    console.warn("NEXT_PUBLIC_WS_URL not set — real-time updates disabled");
+    return null;
+  }
+
   const ws = new WebSocket(`${wsBase}/ws?token=${token}`);
   ws.onmessage = (e) => {
     try {
