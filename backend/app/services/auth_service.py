@@ -14,11 +14,17 @@ from app.models.database import User, get_db
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer = HTTPBearer(auto_error=False)
 
+import hashlib
+
+def _prep(plain: str) -> str:
+    """SHA-256 prehash so bcrypt never sees >72 bytes."""
+    return hashlib.sha256(plain.encode("utf-8")).hexdigest()
+
 def hash_password(plain: str) -> str:
-    return pwd_ctx.hash(plain[:72])
+    return pwd_ctx.hash(_prep(plain))
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_ctx.verify(plain[:72], hashed)
+    return pwd_ctx.verify(_prep(plain), hashed)
 
 def create_access_token(user_id: str, email: str) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
